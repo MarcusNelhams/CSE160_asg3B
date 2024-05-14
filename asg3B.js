@@ -24,7 +24,7 @@ var FSHADER_SOURCE = `
   uniform int u_WhichTexture;
   void main() {
     vec4 wallTexture = texture2D(u_Sampler0, v_UV);
-    vec4 eyeTexture = texture2D(u_Sampler1, v_UV);
+    vec4 bush = texture2D(u_Sampler1, v_UV);
     vec4 grassTexture = texture2D(u_Sampler2, v_UV);
     if (u_WhichTexture == -2) {
       gl_FragColor = u_FragColor;
@@ -34,7 +34,7 @@ var FSHADER_SOURCE = `
       //gl_FragColor = 0.5 * bodyTexture + 0.5 * u_FragColor;
       gl_FragColor = wallTexture;
     } else if (u_WhichTexture == 1) {
-      gl_FragColor = eyeTexture;
+      gl_FragColor = bush;
     } else if (u_WhichTexture == 2) {
       gl_FragColor = grassTexture;
     } else {
@@ -77,16 +77,8 @@ let g_bodyY = 0;
 let g_camera;
 
 // map
-let g_map = [
-  [1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 1, 1, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 1, 0, 0, 0, 0, 1],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0]
-]
+let g_map = new Map();
+g_map.generateMap();
 
 // Sets up WebGL
 function setupWebGL() {
@@ -208,7 +200,7 @@ function initTextures() {
   image.src = 'wall.jpg';
 
   image2.onload = function() { sendImageToTEXTURE1(image2);};
-  image2.src = 'eye.jpg';
+  image2.src = 'bush.jpg';
 
   image3.onload = function() { sendImageToTEXTURE2(image3); };
   image3.src = 'grass.jpg';
@@ -301,15 +293,11 @@ function convertCoordinatesEventToGL(ev) {
 }
 
 function addActionsForHtmlUI() {
-
-  // Front Leg Sliders
-  document.getElementById('UFRLegSlide').addEventListener('mousemove', function() { if (!g_animation) g_frontLegAngle = this.value; renderAllShapes(); });
-  document.getElementById('FRKSlide').addEventListener('mousemove', function() { g_frontKneeAngle = this.value; renderAllShapes(); });
-  document.getElementById('FHSlide').addEventListener('mousemove', function() { g_frontHoofAngle = this.value; renderAllShapes(); });
-
   // Animation Buttons
-  document.getElementById('FLAnimationOnButton').onclick = function() {g_animation = true;}
-  document.getElementById('FLAnimationOffButton').onclick = function() {g_animation = false; g_poke = false;}
+  document.getElementById('UpMap').onclick = function() {g_camera.eye = new Vector3([0, 34, 0]); g_camera.at = new Vector3([0, 33, -.001]); g_camera.updateCamera();}
+  document.getElementById('DownMap').onclick = function() {g_camera.eye = new Vector3([0,.3,0+20]); g_camera.at = new Vector3([0,.3,-1+20]); g_camera.updateCamera();}
+
+  document.getElementById('NewMap').onclick = function() {g_map.generateMap()}
 
 }
 
@@ -434,13 +422,8 @@ function renderAllShapes() {
   var ground = new Cube(groundM, groundColor, 2);
   ground.render();
 
-  // cow
-  // var cow1 = new Cow(texture=0);
-  // cow1.render();
-
   // walls
-  var map = new Map();
-  map.drawMap();
+  g_map.drawMap();
 
   // performance check
   var duration = performance.now() - start;
@@ -454,6 +437,7 @@ function handleOnClick(ev) {
   }
 
   if (g_keysDown[16]) {
+    g_map.placeBlock();
     g_pokeStart = g_seconds;
     g_bodyAngle = 0;
     g_backLegAngle = 0;
@@ -464,6 +448,10 @@ function handleOnClick(ev) {
     g_poke = true;
     g_animation = false;
   } 
+
+  if (ev.buttons == 1 && !g_keysDown[16]) {
+    g_map.breakBlock();
+  }
   
   let [x, y] = convertCoordinatesEventToGL(ev);
 
